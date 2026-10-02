@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Mic
@@ -42,8 +43,12 @@ fun ExtractScreen(
 
     val targetLanguage by viewModel.targetLanguage.collectAsStateWithLifecycle()
     val translateEnabled by viewModel.translateEnabled.collectAsStateWithLifecycle()
+    val customApiKey by viewModel.customApiKey.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+
+    var apiKeyInput by remember(customApiKey) { mutableStateOf(customApiKey) }
+    var apiKeyValidationResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
 
     val languages = listOf("English", "Hindi", "Gujarati")
 
@@ -94,6 +99,51 @@ fun ExtractScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // API Key Warning / Input Card if missing
+            if (customApiKey.isBlank()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Key, contentDescription = null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Gemini API Key Required", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                        Text(
+                            text = "Please enter your valid Gemini API Key (starting with 'AIza') below to enable AI extractions and translations.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        OutlinedTextField(
+                            value = apiKeyInput,
+                            onValueChange = { apiKeyInput = it; apiKeyValidationResult = null },
+                            label = { Text("Gemini API Key") },
+                            placeholder = { Text("AIzaSy...") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        apiKeyValidationResult?.let { (success, msg) ->
+                            Text(
+                                text = msg,
+                                color = if (success) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Button(
+                            onClick = {
+                                val res = viewModel.validateAndSaveApiKey(apiKeyInput)
+                                apiKeyValidationResult = res
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Validate & Save API Key")
+                        }
+                    }
+                }
+            }
+
             // Language & Translation Options Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -192,7 +242,7 @@ fun ExtractScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = !isLoading && youtubeUrl.isNotBlank()
+                                enabled = !isLoading && youtubeUrl.isNotBlank() && customApiKey.isNotBlank()
                             ) {
                                 if (isLoading) {
                                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -222,7 +272,7 @@ fun ExtractScreen(
                             Button(
                                 onClick = { filePickerLauncher.launch("audio/*") },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = !isLoading
+                                enabled = !isLoading && customApiKey.isNotBlank()
                             ) {
                                 Text("Choose Audio File")
                             }
@@ -248,7 +298,7 @@ fun ExtractScreen(
                             Button(
                                 onClick = { filePickerLauncher.launch("video/*") },
                                 modifier = Modifier.fillMaxWidth(),
-                                enabled = !isLoading
+                                enabled = !isLoading && customApiKey.isNotBlank()
                             ) {
                                 Text("Choose Video File")
                             }
