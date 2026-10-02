@@ -7,15 +7,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SmartToy
-import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -38,6 +36,9 @@ fun HomeScreen(
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
     val errorMessage by viewModel.errorMessage.collectAsStateWithLifecycle()
+    val customApiKey by viewModel.customApiKey.collectAsStateWithLifecycle()
+
+    var showApiKeyDialog by remember { mutableStateOf(false) }
 
     val categories = listOf("All", "YouTube", "Audio File", "Video File", "Voice Recording")
 
@@ -45,6 +46,15 @@ fun HomeScreen(
         topBar = {
             TopAppBar(
                 title = { Text("MediaScribe & Notes", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(onClick = { showApiKeyDialog = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Key,
+                            contentDescription = "API Key Settings",
+                            tint = if (customApiKey.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -162,6 +172,82 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showApiKeyDialog) {
+        ApiKeyValidationDialog(
+            currentKey = customApiKey,
+            onDismiss = { showApiKeyDialog = false },
+            onValidateAndSave = { key ->
+                viewModel.validateAndSaveApiKey(key)
+            }
+        )
+    }
+}
+
+@Composable
+fun ApiKeyValidationDialog(
+    currentKey: String,
+    onDismiss: () -> Unit,
+    onValidateAndSave: (String) -> Pair<Boolean, String>
+) {
+    var apiKeyInput by remember { mutableStateOf(currentKey) }
+    var validationResult by remember { mutableStateOf<Pair<Boolean, String>?>(null) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Gemini API Key Settings & Validation", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = "Enter your Gemini API Key (starts with 'AIza'). Our format validation checks your key before saving to ensure AI calls succeed.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = apiKeyInput,
+                    onValueChange = {
+                        apiKeyInput = it
+                        validationResult = null
+                    },
+                    label = { Text("Gemini API Key") },
+                    placeholder = { Text("AIzaSy...") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                validationResult?.let { (success, message) ->
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = if (success) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
+                    ) {
+                        Text(
+                            text = message,
+                            color = if (success) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val result = onValidateAndSave(apiKeyInput)
+                    validationResult = result
+                    if (result.first) {
+                        // Dismiss after short delay or leave open to show success
+                    }
+                }
+            ) {
+                Text("Validate & Save")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable

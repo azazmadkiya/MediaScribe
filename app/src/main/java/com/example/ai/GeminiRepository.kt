@@ -7,11 +7,18 @@ import kotlinx.coroutines.withContext
 class GeminiRepository {
     private val api = GeminiClient.service
 
-    suspend fun extractFromYouTube(url: String, targetLanguage: String, translate: Boolean): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    private fun getActiveApiKey(customKey: String?): String {
+        if (!customKey.isNullOrBlank() && customKey != "MY_GEMINI_API_KEY") {
+            return customKey
+        }
+        return BuildConfig.GEMINI_API_KEY
+    }
+
+    suspend fun extractFromYouTube(url: String, targetLanguage: String, translate: Boolean, customApiKey: String?): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val apiKey = BuildConfig.GEMINI_API_KEY
+            val apiKey = getActiveApiKey(customApiKey)
             if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
-                return@withContext Result.failure(Exception("Gemini API Key is missing. Please add it in AI Studio Secrets."))
+                return@withContext Result.failure(Exception("Gemini API Key is missing. Please configure a valid API key."))
             }
 
             val translationInstruction = if (translate) {
@@ -44,9 +51,9 @@ class GeminiRepository {
         }
     }
 
-    suspend fun transcribeMedia(mimeType: String, base64Data: String, fileName: String, targetLanguage: String, translate: Boolean): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun transcribeMedia(mimeType: String, base64Data: String, fileName: String, targetLanguage: String, translate: Boolean, customApiKey: String?): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
         try {
-            val apiKey = BuildConfig.GEMINI_API_KEY
+            val apiKey = getActiveApiKey(customApiKey)
             if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
                 return@withContext Result.failure(Exception("Gemini API Key is missing."))
             }
@@ -86,9 +93,9 @@ class GeminiRepository {
         }
     }
 
-    suspend fun refineWithHighThinking(currentContent: String, targetLanguage: String, translate: Boolean): Result<String> = withContext(Dispatchers.IO) {
+    suspend fun refineWithHighThinking(currentContent: String, targetLanguage: String, translate: Boolean, customApiKey: String?): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val apiKey = BuildConfig.GEMINI_API_KEY
+            val apiKey = getActiveApiKey(customApiKey)
             if (apiKey.isBlank() || apiKey == "MY_GEMINI_API_KEY") {
                 return@withContext Result.failure(Exception("Gemini API Key is missing."))
             }
