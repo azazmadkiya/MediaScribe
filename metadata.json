@@ -1,0 +1,6 @@
+{
+  "name": "MediaScribe",
+  "description": "Extract text, lyrics, and transcriptions from YouTube links, audio, and video files with AI and save as notes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
